@@ -2,11 +2,11 @@
 //
 
 
-#include "cnc_current_tracker.h"
+#include "cnc_current_recorder.h"
 
 using namespace std;
 DatabaseManager database;
-int cnc_current_tracker()
+int cnc_current_recorder()
 {
     //----------------------
     // Declare and initialize variables.
@@ -41,6 +41,7 @@ int cnc_current_tracker()
     //}
     //std::cout << "Successfullt Connected To: " << dbConn->getSchema() << "\n";
     //database.setupTable(*dbConn);
+
     database.setupSQLServerTable();
     ////----------------------
     //// Initialize Winsock
@@ -77,9 +78,9 @@ int cnc_current_tracker()
             // closesocket(ConnectSocket);
             printf("Unable to connect to server: %ld\n", WSAGetLastError());
             printf("Retrying connection in 5 seconds");
-            this_thread::sleep_for(chrono::seconds(5));
-            // WSACleanup();
-            //return 1;
+            this_thread::sleep_for(chrono::minutes(5));
+            WSACleanup();
+            return 1;
         }
         else {
             std::cout << "Connected to: " << DEFAULT_IP << " on port: " << DEFAULT_PORT << endl;
@@ -102,16 +103,15 @@ int cnc_current_tracker()
         outputLog.close();
     }
     do {
-        iResult = recv(ConnectSocket, recvbuf, recvbuflen, 0);
+        iResult = recv(ConnectSocket, recvbuf, recvbuflen, MSG_WAITALL);
         //cout << "testlog\n";
         if (iResult > 0) {
             outputLog.open(logFileName, fstream::in | fstream::out | fstream::app);
             printf("Bytes received: %d\n", iResult);
             time_t timestamp = time(NULL);
-            struct tm tstruct;
+            struct tm tstruct = *localtime(&timestamp);
             char dateBuf[120];
             char timeBuf[120];
-            tstruct = *localtime(&timestamp);
             strftime(dateBuf, sizeof(dateBuf), "%F", &tstruct);
             strftime(timeBuf, sizeof(timeBuf), "%T", &tstruct);
             //if (time[strlen(time) - 1] == '\n') time[strlen(time) - 1] = '\0';
@@ -198,7 +198,8 @@ int cnc_current_tracker()
             std::cout << "-------" << endl;
             outputLog.close();
             //database.addReading(reading);
-            database.AddReadingToSqlServer(reading);
+            if ((tstruct.tm_wday != 0 && tstruct.tm_wday != 6) && (tstruct.tm_hour >= 6 && tstruct.tm_hour <= (5 + 12)))
+                database.AddReadingToSqlServer(reading);
 
         }
         else if (iResult == 0)

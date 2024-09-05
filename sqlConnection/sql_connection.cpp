@@ -6,9 +6,11 @@ sql::Connection *db_connection;
 SQLHANDLE sqlConnHandle;
 SQLHANDLE sqlStmtHandle;
 SQLHANDLE sqlEnvHandle;
+//const char* event_log_source_name("cnc_current_tracker_service");
 
 void DatabaseManager::connectToSQLServer() {
-    SQLCHAR dsn[256];
+    //HANDLE event_log = RegisterEventSource(NULL, event_log_source_name);
+    SQLCHAR dsn_buff[256];
     SQLCHAR desc[256];
     SQLSMALLINT dsn_ret;
     SQLSMALLINT desc_ret;
@@ -29,28 +31,36 @@ void DatabaseManager::connectToSQLServer() {
     direction = SQL_FETCH_FIRST;
     std::cout << "SQL DATA SOURCES:" << std::endl;
     while (SQL_SUCCEEDED(ret = SQLDataSources(sqlEnvHandle, direction,
-        dsn, sizeof(dsn), &dsn_ret,
+        dsn_buff, sizeof(dsn_buff), &dsn_ret,
         desc, sizeof(desc), &desc_ret))) {
         direction = SQL_FETCH_NEXT;
-        std::cout << dsn << " | " << desc << std::endl;
+        std::cout << dsn_buff << " | " << desc << std::endl;
         if (ret == SQL_SUCCESS_WITH_INFO) printf("\tdata truncation\n");
     }
-    char database_host[1024];
-    char database_DNS[1024];
-    char database_schema[1024];
-    char database_user[1024];
-    char database_pass[1024];
-    int database_port = GetPrivateProfileInt("Database", "Port", 3306, ".\\settings.ini");
-    GetPrivateProfileString("Database", "Host", NULL, database_host, sizeof(database_host) / sizeof(database_host[0]), ".\\settings.ini");
-    GetPrivateProfileString("Database", "DNS", NULL, database_DNS, sizeof(database_DNS) / sizeof(database_DNS[0]), ".\\settings.ini");
-    GetPrivateProfileString("Database", "Schema", NULL, database_schema, sizeof(database_schema) / sizeof(database_schema[0]), ".\\settings.ini");
-    GetPrivateProfileString("Database", "Username", NULL, database_user, sizeof(database_user) / sizeof(database_user[0]), ".\\settings.ini");
-    GetPrivateProfileString("Database", "Password", NULL, database_pass, sizeof(database_pass) / sizeof(database_pass[0]), ".\\settings.ini");
+    std::string conn_string;
+
+    HKEY hKey;
+    std::string strKey = "SOFTWARE\\CNC_Current_Tracker";
+    LONG nError = RegOpenKeyEx(HKEY_LOCAL_MACHINE, strKey.data(), NULL, KEY_ALL_ACCESS, &hKey);
+    if (nError) {
+        std::cout << "Error: " << nError << " Could not find " << strKey << std::endl;
+        return;
+    }
+
+    conn_string.append("SERVER = " + GetStrVal(hKey, "HOST", REG_SZ) + ";");
+    conn_string.append("DSN = " + GetStrVal(hKey, "DSN", REG_SZ) + ";");
+    conn_string.append("DATABASE = " + GetStrVal(hKey, "SCHEMA", REG_SZ)+ ";");
+    conn_string.append("UID = " + GetStrVal(hKey, "Username", REG_SZ)+ ";");
+    conn_string.append("PWD = " + GetStrVal(hKey, "Password", REG_SZ)+ ";");
+
+    const char* success_message = "Successfully connected to SQL Server";
+    const char* success_message_with_info = "Successfully connected to SQL Server. There was additional details";
+    const char* invalid_handle_message = "Could not connect to SQL Server";
     SQLSMALLINT msg_len = 0;
-    SQLCHAR sql_state[6], message[256];
+    SQLCHAR sql_state[6];
+    SQLCHAR message[256];
     SQLINTEGER native_error = 0;
-    std::string conn_string = "DSN="+(std::string)database_DNS+";SERVER="+(std::string)database_host+";DATABASE="+(std::string)database_schema+";UID="+(std::string)database_user+";PWD="+(std::string)database_pass+";";
-    //(SQLWCHAR*)L"DRIVER={SQL Server};SERVER=localhost, 1433;DATABASE=master;UID=sa;PWD=Elephant007;",
+
     switch (SQLDriverConnect(sqlConnHandle,
         NULL,
         (SQLCHAR*)conn_string.c_str(),
@@ -61,17 +71,21 @@ void DatabaseManager::connectToSQLServer() {
         SQL_DRIVER_NOPROMPT
     )) {
     case SQL_SUCCESS:
-        std::cout << "Successfully connected to SQL Server" << "\n";
+        std::cout << success_message << "\n";
+        //ReportEvent(event_log, EVENTLOG_SUCCESS, 0, 0, NULL, 1, 0, &success_message, NULL);
         break;
     case SQL_SUCCESS_WITH_INFO:
-        std::cout << "Successfully connected to SQL Server" << "\n";
+        std::cout << success_message_with_info << "\n";
+        //ReportEvent(event_log, EVENTLOG_SUCCESS, 0, 0, NULL, 1, 0, &success_message_with_info, NULL);
         break;
     case SQL_INVALID_HANDLE:
-        std::cout << "Could not connect to SQL Server" << "\n";
+        std::cout << invalid_handle_message << "\n";
+        //ReportEvent(event_log, EVENTLOG_ERROR_TYPE, 0, 0, NULL, 1, 0, &invalid_handle_message, NULL);
         CleanupHandlers();
     case SQL_ERROR:
         SQLGetDiagRec(SQL_HANDLE_DBC, sqlConnHandle, 1, sql_state, &native_error, message, sizeof(message), &msg_len);
         std::cout << "Could not connect to SQL Server" << " Error code: " << sql_state << " Message: " << message << "\n";
+        //ReportEvent(event_log, EVENTLOG_ERROR_TYPE, 0, 0, NULL, 1, 0, message, NULL);
         CleanupHandlers();
     default:
         break;
@@ -80,6 +94,32 @@ void DatabaseManager::connectToSQLServer() {
     if (SQL_SUCCESS != SQLAllocHandle(SQL_HANDLE_STMT, sqlConnHandle, &sqlStmtHandle))
         CleanupHandlers();
    
+}
+
+std::string DatabaseManager::GetStrVal(HKEY hKey, LPCTSTR lpValue, DWORD type)
+{
+    DWORD buffSize = 1024;
+    char data[1024];
+    std::string reply;
+    std::cout << lpValue << std::endl;
+    //LONG nError = RegQueryValueEx(hKey, lpValue, NULL, &type, (LPBYTE)data, &buffSize);
+    LONG nError = RegGetValue(hKey, NULL, lpValue, RRF_RT_ANY, NULL, data, &buffSize);
+
+    if (nError == ERROR_FILE_NOT_FOUND) {
+        std::cout << "No File Found" << std::endl;
+        reply = ""; // The value will be created and set to data next time SetVal() is called.
+    }
+    else if (nError)
+        std::cout << "Error: " << nError << " Could not get registry value " << (char*)lpValue << std::endl;
+    else {
+        std::cout << "data: " << data << bool(nError == ERROR_FILE_NOT_FOUND) << std::endl;
+        reply = data;
+        reply.resize(buffSize);
+        std::cout << "reply: " << reply << std::endl;
+
+    }
+    getchar();
+    return reply;
 }
 
 void DatabaseManager::CleanupHandlers() {
@@ -283,6 +323,8 @@ void DatabaseManager::addReading(struct CNCVoltageMeter &measures) {
             << e.what() << std::endl;
     }
 }
+
+
 
 // Delete a task record (indicated by id)
 void DatabaseManager::deleteTask(std::unique_ptr<sql::Connection>& conn, int id) {

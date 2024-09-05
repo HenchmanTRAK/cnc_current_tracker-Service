@@ -1,8 +1,8 @@
-#pragma once
 #ifndef SQL_CONNECTION_H
 #define SQL_CONNECTION_H 1
+#pragma once
 
-#include "cnc_current_tracker.h"
+#include "cnc_current_recorder.h"
 
 #include <stdlib.h>
 #include <iostream>
@@ -34,11 +34,12 @@ public:
 
 private:
 	// establishing global but private handlers and connections
-	sql::Connection* db_connection;
+	sql::Connection *db_connection;
 	SQLHANDLE sqlConnHandle;
 	SQLHANDLE sqlStmtHandle;
 	SQLHANDLE sqlEnvHandle;
-	
+	std::string GetStrVal(HKEY hKey, LPCTSTR lpValue, DWORD type);
+
 	// used for learning
 	void showTasks(std::unique_ptr<sql::Connection>& conn);
 	void addTask(std::unique_ptr<sql::Connection>& conn, std::string description);

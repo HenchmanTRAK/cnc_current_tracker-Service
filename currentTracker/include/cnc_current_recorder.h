@@ -1,7 +1,7 @@
 // CNCVoltageTracker.h : Include file for standard system include files,
 // or project specific include files.
-#ifndef CNC_CURRENT_TRACKER_H
-#define CNC_CURRENT_TRACKER_H	1
+#ifndef CNC_CURRENT_RECORDER_H
+#define CNC_CURRENT_RECORDER_H	1
 
 #pragma once
 
@@ -19,7 +19,6 @@
 #include <chrono>
 
 #include "sql_connection.h"
-
 
 #pragma comment(lib, "Ws2_32.lib")
 
@@ -43,6 +42,6 @@ struct CNCVoltageMeter{
     double channel2Reading;
 };
 
-int cnc_current_tracker();
+int cnc_current_recorder();
 
 #endif

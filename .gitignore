@@ -2,3 +2,6 @@ out
 cmake
 .vs
 *.ini
+sample.rc
+sample.res
+*.bin
