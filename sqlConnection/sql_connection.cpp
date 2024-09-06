@@ -37,21 +37,18 @@ void DatabaseManager::connectToSQLServer() {
         std::cout << dsn_buff << " | " << desc << std::endl;
         if (ret == SQL_SUCCESS_WITH_INFO) printf("\tdata truncation\n");
     }
-    std::string conn_string;
 
-    HKEY hKey;
-    std::string strKey = "SOFTWARE\\CNC_Current_Tracker";
-    LONG nError = RegOpenKeyEx(HKEY_LOCAL_MACHINE, strKey.data(), NULL, KEY_ALL_ACCESS, &hKey);
-    if (nError) {
-        std::cout << "Error: " << nError << " Could not find " << strKey << std::endl;
-        return;
-    }
+    HKEY hKey = OpenKey(HKEY_LOCAL_MACHINE, "SOFTWARE\\CNC_Current_Tracker");
+    
+    std::stringstream conn_string;
+    conn_string << "SERVER=" << GetStrVal(hKey, "HOST", REG_SZ) << ";";
+    conn_string << "DSN=" << GetStrVal(hKey, "DSN", REG_SZ) << ";";
+    conn_string << "DATABASE=" << GetStrVal(hKey, "SCHEMA", REG_SZ) << ";";
+    conn_string << "UID=" << GetStrVal(hKey, "Username", REG_SZ) << ";";
+    conn_string << "PWD=" << GetStrVal(hKey, "Password", REG_SZ)<< ";";
 
-    conn_string.append("SERVER = " + GetStrVal(hKey, "HOST", REG_SZ) + ";");
-    conn_string.append("DSN = " + GetStrVal(hKey, "DSN", REG_SZ) + ";");
-    conn_string.append("DATABASE = " + GetStrVal(hKey, "SCHEMA", REG_SZ)+ ";");
-    conn_string.append("UID = " + GetStrVal(hKey, "Username", REG_SZ)+ ";");
-    conn_string.append("PWD = " + GetStrVal(hKey, "Password", REG_SZ)+ ";");
+    SvcReportEvent("SQL_Connection", "Attempting to connect to SQL SERVER");
+    //with string : "+conn_string.str()
 
     const char* success_message = "Successfully connected to SQL Server";
     const char* success_message_with_info = "Successfully connected to SQL Server. There was additional details";
@@ -63,7 +60,7 @@ void DatabaseManager::connectToSQLServer() {
 
     switch (SQLDriverConnect(sqlConnHandle,
         NULL,
-        (SQLCHAR*)conn_string.c_str(),
+        (SQLCHAR*)conn_string.str().c_str(),
         SQL_NTS,
         retconstring,
         sizeof(retconstring),
@@ -81,45 +78,21 @@ void DatabaseManager::connectToSQLServer() {
     case SQL_INVALID_HANDLE:
         std::cout << invalid_handle_message << "\n";
         //ReportEvent(event_log, EVENTLOG_ERROR_TYPE, 0, 0, NULL, 1, 0, &invalid_handle_message, NULL);
+        SvcReportEvent("SQL_Connection", invalid_handle_message);
         CleanupHandlers();
     case SQL_ERROR:
         SQLGetDiagRec(SQL_HANDLE_DBC, sqlConnHandle, 1, sql_state, &native_error, message, sizeof(message), &msg_len);
         std::cout << "Could not connect to SQL Server" << " Error code: " << sql_state << " Message: " << message << "\n";
+        SvcReportEvent("SQL_Connection", "Could not connect to SQL Server Error Message: " + *message);
         //ReportEvent(event_log, EVENTLOG_ERROR_TYPE, 0, 0, NULL, 1, 0, message, NULL);
         CleanupHandlers();
     default:
         break;
     }
+    RegCloseKey(hKey);
     // exit if error with connecting
     if (SQL_SUCCESS != SQLAllocHandle(SQL_HANDLE_STMT, sqlConnHandle, &sqlStmtHandle))
         CleanupHandlers();
-   
-}
-
-std::string DatabaseManager::GetStrVal(HKEY hKey, LPCTSTR lpValue, DWORD type)
-{
-    DWORD buffSize = 1024;
-    char data[1024];
-    std::string reply;
-    std::cout << lpValue << std::endl;
-    //LONG nError = RegQueryValueEx(hKey, lpValue, NULL, &type, (LPBYTE)data, &buffSize);
-    LONG nError = RegGetValue(hKey, NULL, lpValue, RRF_RT_ANY, NULL, data, &buffSize);
-
-    if (nError == ERROR_FILE_NOT_FOUND) {
-        std::cout << "No File Found" << std::endl;
-        reply = ""; // The value will be created and set to data next time SetVal() is called.
-    }
-    else if (nError)
-        std::cout << "Error: " << nError << " Could not get registry value " << (char*)lpValue << std::endl;
-    else {
-        std::cout << "data: " << data << bool(nError == ERROR_FILE_NOT_FOUND) << std::endl;
-        reply = data;
-        reply.resize(buffSize);
-        std::cout << "reply: " << reply << std::endl;
-
-    }
-    getchar();
-    return reply;
 }
 
 void DatabaseManager::CleanupHandlers() {
@@ -159,6 +132,7 @@ void DatabaseManager::setupSQLServerTable() {
     //else display query result
     if (SQL_SUCCESS != SQLExecDirect(sqlStmtHandle, (SQLCHAR*)query, SQL_NTS)) {
         std::cout << "Error querying SQL Server" << "\n";
+        SvcReportEvent("SQL_Connection", "Error creating table in SQL Server");
         CleanupHandlers();
     }
     else {
@@ -204,6 +178,7 @@ void DatabaseManager::AddReadingToSqlServer(struct CNCVoltageMeter &measures)
     //else display query result
     if (SQL_SUCCESS != SQLExecDirect(sqlStmtHandle, (SQLCHAR*)query.c_str(), SQL_NTS)) {
         std::cout << "Error querying SQL Server" << "\n";
+        SvcReportEvent("SQL_Connection", "Error creating entry in SQL Server");
         CleanupHandlers();
     }
     else {
@@ -291,6 +266,7 @@ Channel2Current DOUBLE \n\
     catch (sql::SQLException &e) {
         std::cerr << "Error creating table: "
             << e.what() << std::endl;
+        SvcReportEvent("SQL_Connection");
         db->rollback();
     }
 }
@@ -321,6 +297,7 @@ void DatabaseManager::addReading(struct CNCVoltageMeter &measures) {
     catch (sql::SQLException& e) {
         std::cerr << "Error inserting values into table: "
             << e.what() << std::endl;
+        SvcReportEvent("SQL_Connection");
     }
 }
 
@@ -338,6 +315,7 @@ void DatabaseManager::deleteTask(std::unique_ptr<sql::Connection>& conn, int id)
     }
     catch (sql::SQLException& e) {
         std::cerr << "Error deleting task: " << e.what() << std::endl;
+        SvcReportEvent("SQL_Connection");
     }
 }
 
@@ -354,6 +332,7 @@ void DatabaseManager::updateTaskStatus(std::unique_ptr<sql::Connection>& conn, i
     }
     catch (sql::SQLException& e) {
         std::cerr << "Error updating task status: " << e.what() << std::endl;
+        SvcReportEvent("SQL_Connection");
     }
 }
 
@@ -369,6 +348,7 @@ void DatabaseManager::addTask(std::unique_ptr<sql::Connection>& conn, std::strin
     }
     catch (sql::SQLException& e) {
         std::cerr << "Error inserting new task: " << e.what() << std::endl;
+        SvcReportEvent("SQL_Connection");
     }
 }
 
@@ -388,6 +368,7 @@ void DatabaseManager::showTasks(std::unique_ptr<sql::Connection>& conn) {
     }
     catch (sql::SQLException& e) {
         std::cerr << "Error selecting tasks: " << e.what() << std::endl;
+        SvcReportEvent("SQL_Connection");
     }
 }
 

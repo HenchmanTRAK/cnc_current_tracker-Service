@@ -3,6 +3,7 @@
 #pragma once
 
 #include "cnc_current_recorder.h"
+#include "event_reporter.h"
 
 #include <stdlib.h>
 #include <iostream>
@@ -38,8 +39,6 @@ private:
 	SQLHANDLE sqlConnHandle;
 	SQLHANDLE sqlStmtHandle;
 	SQLHANDLE sqlEnvHandle;
-	std::string GetStrVal(HKEY hKey, LPCTSTR lpValue, DWORD type);
-
 	// used for learning
 	void showTasks(std::unique_ptr<sql::Connection>& conn);
 	void addTask(std::unique_ptr<sql::Connection>& conn, std::string description);

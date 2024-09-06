@@ -25,5 +25,13 @@ Language=English
 An error has occurred (%2).
 .
 
+MessageId=0x0
+Severity=Informational
+Facility=Runtime
+SymbolicName=SVC_INFORMATION
+Language=English
+For Your Information (%2).
+.
+
 ; // A message file must end with a period on its own line
 ; // followed by a blank line.

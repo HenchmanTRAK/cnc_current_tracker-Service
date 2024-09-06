@@ -3,108 +3,48 @@
 
 #include "CurrentTrackerAsService.h"
 
-
-//void ErrorExit()
-void ErrorExit(LPCTSTR lpszFunction = "")
+int ShellExecuteApp(std::string appName, std::string params)
 {
-	// Retrieve the system error message for the last-error code
+	SHELLEXECUTEINFO SEInfo;
+	DWORD ExitCode;
+	std::string exeFile = appName;
+	std::string paramStr = params;
+	std::string StartInString;
 
-	LPVOID lpMsgBuf;
-	//LPVOID lpDisplayBuf;
-	DWORD dw = GetLastError();
+	// fine the windows handle using https://learn.microsoft.com/en-us/troubleshoot/windows-server/performance/obtain-console-window-handle
+	//HWND windowHandle;
+	//char newWindowTitle[1024];
+	//char oldWindowTitle[1024];
 
-	FormatMessage(
-		FORMAT_MESSAGE_ALLOCATE_BUFFER |
-		FORMAT_MESSAGE_FROM_SYSTEM |
-		FORMAT_MESSAGE_IGNORE_INSERTS,
-		NULL,
-		dw,
-		MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-		(LPTSTR)&lpMsgBuf,
-		0, NULL);
+	//GetConsoleTitle(oldWindowTitle, sizeof(oldWindowTitle));
+	//
+	//printf(oldWindowTitle);
+	//printf("\n");
+	Sleep(5000);
 
-	// Display the error message and exit the process
+	//std::fill_n(SEInfo, sizeof(SEInfo), NULL);
+	SEInfo.cbSize = sizeof(SHELLEXECUTEINFO);
+	SEInfo.fMask = SEE_MASK_NOCLOSEPROCESS;
+	SEInfo.hwnd = NULL;
+	SEInfo.lpVerb = NULL;
+	SEInfo.lpDirectory = NULL;
+	SEInfo.lpFile = exeFile.c_str();
+	SEInfo.lpParameters = paramStr.c_str();
+	SEInfo.nShow = paramStr == "" ? SW_NORMAL : SW_HIDE;
+	if (ShellExecuteEx(&SEInfo)) {
+		do {
+			GetExitCodeProcess(SEInfo.hProcess, &ExitCode);
+			std::cout << ExitCode << std::endl;
+		} while (ExitCode != STILL_ACTIVE);
+		return 1;
+	}
 
-	/*lpDisplayBuf = (LPVOID)LocalAlloc(LMEM_ZEROINIT,
-		(lstrlen((LPCTSTR)lpMsgBuf) + lstrlen((LPCTSTR)lpszFunction) + 40) * sizeof(TCHAR));
-	StringCchPrintf((LPTSTR)lpDisplayBuf,
-		LocalSize(lpDisplayBuf) / sizeof(TCHAR),
-		TEXT("%s failed with error %d: %s"),
-		lpszFunction, dw, lpMsgBuf);
-	MessageBox(NULL, (LPCTSTR)lpDisplayBuf, TEXT("Error"), MB_OK);*/
-	std::cout << "Error: " << dw << " " << (char*)lpMsgBuf << std::endl;
-	LocalFree(lpMsgBuf);
-	//LocalFree(lpDisplayBuf);
-	//ExitProcess(dw);
+	return 0;
 }
 
 int __cdecl _tmain(int argc, TCHAR *argv[])
 {
-	std::cout << SERVICE_NAME << *SERVICE_NAME << std::endl;
-	HKEY hKey = OpenKey(HKEY_LOCAL_MACHINE, std::string("SYSTEM\\CurrentControlSet\\Services\\EventLog\\Application\\").append(SERVICE_NAME));
-	std::string evtMsgFile = GetStrVal(hKey, "EventMessageFile", REG_SZ);
-	GetVal(hKey, "TypesSupported", REG_DWORD);
-	std::cout << evtMsgFile << std::endl;
-	char buff[1024];
-	int byteLength;
-	std::string currDir;
-	if (evtMsgFile == "") {
-		byteLength = GetCurrentDirectory(sizeof(buff), buff);
-		std::string currDir = buff;
-		currDir.resize(byteLength);
-		evtMsgFile = currDir;
-		//+ "\\sample.dll";
-
-	}
-	std::cout << evtMsgFile << std::endl;
-	SetStrVal(hKey, "EventMessageFile", evtMsgFile, REG_SZ);
-	SetVal(hKey, "TypesSupported", 7, REG_DWORD);
-	RegCloseKey(hKey);
-
-	hKey = OpenKey(HKEY_LOCAL_MACHINE, std::string("SOFTWARE\\").append(SERVICE_NAME));
-	std::string installPath = GetStrVal(hKey, "InstallPath", REG_SZ);
-	if (installPath == "") {
-		byteLength = GetCurrentDirectory(sizeof(buff), buff);
-		std::string currDir = buff;
-		currDir.resize(byteLength);
-		installPath = currDir;
-	}
-	SetStrVal(hKey, "InstallPath", installPath, REG_SZ);
-
-	std::string iniFilePath = GetStrVal(hKey, "IniFilePath", REG_SZ);
-	if (iniFilePath == "") {
-		byteLength = GetCurrentDirectory(sizeof(buff), buff);
-		std::string currDir = buff;
-		currDir.resize(byteLength);
-		iniFilePath = currDir + "\\settings.ini";
-	}
-	SetStrVal(hKey, "IniFilePath", iniFilePath, REG_SZ);
-
-	CSimpleIni ini;
-	ini.SetUnicode();
-	iniFilePath = GetStrVal(hKey, "IniFilePath", REG_SZ);
-
-	SI_Error rc = ini.LoadFile(iniFilePath.c_str());
-	if (rc < 0) {
-		std::cerr << "Failed to Load INI File" << std::endl;
-		getchar();
-		return 1;
-	}
-
-	CSimpleIniA::TNamesDepend keys;
-	ini.GetAllKeys("Database", keys);
-	for (auto it = keys.begin(); it != keys.end(); ++it) {
-		std::cout << std::string(it->pItem) << std::endl;
-		std::string value(ini.GetValue("Database", it->pItem, ""));
-		value.erase(
-			remove(value.begin(), value.end(), '\"'),
-			value.end()
-		);
-		std::cout << it->pItem << "=" << value << std::endl;
-		SetStrVal(hKey, it->pItem, value ,REG_SZ);
-	}
-
-	RegCloseKey(hKey);
+	
 	//printf(_T("CNC_Current_Tracker_Service: Main: Entry"));
 	/*std::cout << lstrcmpi(argv[1], TEXT("install")) << std::endl;
 	getchar();*/
@@ -115,111 +55,131 @@ int __cdecl _tmain(int argc, TCHAR *argv[])
 	GetPrivateProfileString("Database", "Username", NULL, database_user, sizeof(database_user) / sizeof(database_user[0]), ".\\settings.ini");
 	GetPrivateProfileString("Database", "Password", NULL, database_pass, sizeof(database_pass) / sizeof(database_pass[0]), ".\\settings.ini");*/
 
-	if (lstrcmpi(argv[1], TEXT("install")) == 0 || lstrcmpi(argv[1], TEXT("install")) == -1)
+	if (lstrcmpi(argv[1], TEXT("install")) == 0)
 	{
+		HKEY hKey = OpenKey(HKEY_LOCAL_MACHINE, std::string("SYSTEM\\CurrentControlSet\\Services\\EventLog\\Application\\").append(SERVICE_NAME));
+		std::string evtMsgFile = GetStrVal(hKey, "EventMessageFile", REG_SZ);
+		GetVal(hKey, "TypesSupported", REG_DWORD);
 
+		char buff[1024];
+		int byteLength;
+		std::string currDir;
+
+		byteLength = GetCurrentDirectory(sizeof(buff), buff);
+		currDir = buff;
+		currDir.resize(byteLength);
+		currDir.append("\\sample.dll");
+		struct stat buffer;
+		
+		if (evtMsgFile == "" || stat(currDir.c_str(), &buffer) == 0) {
+			evtMsgFile = currDir;
+
+		}
+		std::cout << "Target: " << evtMsgFile << std::endl;
+		SetStrVal(hKey, "EventMessageFile", evtMsgFile, REG_SZ);
+		SetVal(hKey, "TypesSupported", 7, REG_DWORD);
+		RegCloseKey(hKey);
+
+		hKey = OpenKey(HKEY_LOCAL_MACHINE, std::string("SOFTWARE\\").append(SERVICE_NAME));
+		std::string serviceName = GetStrVal(hKey, "ServiceName", REG_SZ);
+		
+		if (serviceName == "" || serviceName.c_str() != SERVICE_NAME) {
+			serviceName = SERVICE_NAME;
+		}
+		std::cout << "Target: " << serviceName << std::endl;
+		SetStrVal(hKey, "ServiceName", serviceName, REG_SZ);
+
+		std::string installPath = GetStrVal(hKey, "InstallPath", REG_SZ);
+		byteLength = GetCurrentDirectory(sizeof(buff), buff);
+		currDir = buff;
+		currDir.resize(byteLength);
+		if (installPath == "" || stat(currDir.c_str(), &buffer) == 0) {
+			installPath = currDir;
+		}
+		std::cout << "Target: " << installPath << std::endl;
+		SetStrVal(hKey, "InstallPath", installPath, REG_SZ);
+
+		std::string iniFilePath = GetStrVal(hKey, "IniFilePath", REG_SZ);
+		byteLength = GetCurrentDirectory(sizeof(buff), buff);
+		currDir = buff;
+		currDir.resize(byteLength);
+		currDir.append("\\settings.ini");
+		if (iniFilePath == "" || stat(currDir.c_str(), &buffer) == 0) {
+			iniFilePath = currDir;
+		}
+		std::cout << "Target: " << iniFilePath << std::endl;
+		SetStrVal(hKey, "IniFilePath", iniFilePath, REG_SZ);
+
+		CSimpleIni ini;
+		ini.SetUnicode();
+		iniFilePath = GetStrVal(hKey, "IniFilePath", REG_SZ);
+
+		SI_Error rc = ini.LoadFile(iniFilePath.c_str());
+		if (rc < 0) {
+			std::cerr << "Failed to Load INI File" << std::endl;
+			getchar();
+			return 1;
+		}
+
+		CSimpleIniA::TNamesDepend keys;
+		ini.GetAllKeys("Database", keys);
+		for (auto it = keys.begin(); it != keys.end(); ++it) {
+			std::cout << std::string(it->pItem) << std::endl;
+			std::string value(ini.GetValue("Database", it->pItem, ""));
+			value.erase(
+				remove(value.begin(), value.end(), '\"'),
+				value.end()
+			);
+			std::cout << it->pItem << "=" << value << std::endl;
+			SetStrVal(hKey, it->pItem, value, REG_SZ);
+		}
+		RegCloseKey(hKey);
 		DoInstallSrv();
-		//return 0;
-		/*StartTheService();
-		getchar();*/
-		DoStartSvc();
+		ShellExecuteApp("CNC_Current_Tracker.exe", " start");
+		return 0;
 	}
 
 	if (lstrcmpi(argv[1], TEXT("remove")) == 0)
 	{
 		DoStopSvc();
 		DoDeleteSvc();
-		/*StopService();
-		getchar();*/
+
 		LONG nError = RegDeleteKey(HKEY_LOCAL_MACHINE, std::string("SYSTEM\\CurrentControlSet\\Services\\EventLog\\Application\\").append(SERVICE_NAME).data());
 	}
 
+	if (lstrcmpi(argv[1], TEXT("start")) == 0)
+	{
+		//DoStopSvc();
+		DoStartSvc();
+	}
+
+	if (lstrcmpi(argv[1], TEXT("stop")) == 0)
+	{
+		DoStopSvc();
+	}
+
+	/*if (lstrcmpi(argv[1], TEXT("install")) == 0 || lstrcmpi(argv[1], TEXT("install")) == -1)
+	{
+		DoStartSvc();
+	}*/
+
 	SERVICE_TABLE_ENTRY ServiceTable[] =
 	{
-		{(LPSTR)SERVICE_NAME, (LPSERVICE_MAIN_FUNCTION) ServiceMain},
+		{(LPSTR)SERVICE_NAME, (LPSERVICE_MAIN_FUNCTION)ServiceMain},
 		{NULL, NULL}
 	};
 
 	if (!StartServiceCtrlDispatcher(ServiceTable))
 	{
-		//SvcReportEvent(TEXT("StartServiceCtrlDispatcher"));
-		ErrorExit(TEXT("GetProcessId"));
+		std::cout << "StartServiceCtrlDispatcher Failed" << std::endl;
+		SvcReportEvent(TEXT("StartServiceCtrlDispatcher"));
+		ErrorMessage(TEXT("GetProcessId"));
+		return 1;
 	}
+	
 	printf(TEXT("CNC_Current_Tracker_Service: Main: StartServiceCtrlDispatcher"));
-	getchar();
+	//getchar();
 	return 0;
-}
-
-HKEY OpenKey(HKEY hRootKey, std::string strKey) {
-	HKEY hKey;
-	//std::string strKey = "SYSTEM\\CurrentControlSet\\Services\\EventLog\\Application\\" + SERVICE_NAME;
-	std::cout << strKey << std::endl;
-	LONG nError = RegOpenKeyEx(hRootKey, strKey.data(), NULL, KEY_ALL_ACCESS, &hKey);
-	if (nError == ERROR_FILE_NOT_FOUND)
-	{
-		std::cout << "Creating registry key: " << strKey << std::endl;
-		nError = RegCreateKeyEx(hRootKey, strKey.data(), NULL, NULL, REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS, NULL, &hKey, NULL);
-	}
-
-	if (nError)
-		std::cout << "Error: " << nError << " Could not find or create " << strKey << std::endl;
-
-	return hKey;
-}
-
-void SetStrVal(HKEY hKey, LPCTSTR lpValue, std::string data, DWORD type)
-{
-	LONG nError = RegSetValueEx(hKey, lpValue, NULL, type, (LPBYTE)data.c_str(), data.size() + 1);
-
-	if (nError)
-		std::cout << "Error: " << nError << " Could not set registry value: " << (char*)lpValue << std::endl;
-}
-
-void SetVal(HKEY hKey, LPCTSTR lpValue, DWORD data, DWORD type)
-{
-	LONG nError = RegSetValueEx(hKey, lpValue, NULL, type, (LPBYTE)&data, sizeof(data));
-
-	if (nError)
-		std::cout << "Error: " << nError << " Could not set registry value: " << (char*)lpValue << std::endl;
-}
-
-std::string GetStrVal(HKEY hKey, LPCTSTR lpValue, DWORD type)
-{
-	DWORD buffSize = 1024;
-	char data[1024];
-	std::string reply;
-	std::cout << lpValue << std::endl;
-	//LONG nError = RegQueryValueEx(hKey, lpValue, NULL, &type, (LPBYTE)data, &buffSize);
-	LONG nError = RegGetValue(hKey, NULL, lpValue, RRF_RT_ANY, NULL, data, &buffSize);
-
-	if (nError == ERROR_FILE_NOT_FOUND) {
-		std::cout << "No File Found" << std::endl;
-		reply = ""; // The value will be created and set to data next time SetVal() is called.
-	}
-	else if (nError)
-		std::cout << "Error: " << nError << " Could not get registry value " << (char*)lpValue << std::endl;
-	else {
-		std::cout << "data: " << data << bool(nError == ERROR_FILE_NOT_FOUND) << std::endl;
-		reply = data;
-		reply.resize(buffSize);
-		std::cout << "reply: " << reply << std::endl;
-
-	}
-	getchar();
-	return reply;
-}
-
-DWORD GetVal(HKEY hKey, LPCTSTR lpValue, DWORD type)
-{
-	DWORD data;		DWORD size = sizeof(data);
-	LONG nError = RegQueryValueEx(hKey, lpValue, NULL, &type, (LPBYTE)&data, &size);
-
-	if (nError == ERROR_FILE_NOT_FOUND)
-		data = 0; // The value will be created and set to data next time SetVal() is called.
-	else if (nError)
-		std::cout << "Error: " << nError << " Could not get registry value " << (char*)lpValue << std::endl;
-
-	return data;
 }
 
 VOID DoInstallSrv()
@@ -231,7 +191,7 @@ VOID DoInstallSrv()
 	if (!GetModuleFileName(NULL, szUnquotedPath, MAX_PATH))
 	{
 		printf("Cannot install service (%d)\n", GetLastError());
-		ErrorExit(TEXT("GetProcessId"));
+		ErrorMessage(SERVICE_NAME);
 		return;
 	}
 
@@ -252,13 +212,13 @@ VOID DoInstallSrv()
 	if (NULL == schSCManager)
 	{
 		printf("OpenSCManager failed (%d)\n", GetLastError());
-		ErrorExit(TEXT("GetProcessId"));
+		ErrorMessage(SERVICE_NAME);
 		return;
 	}
 
 	// Create the service
 	// | SERVICE_INTERACTIVE_PROCESS
-	schService = CreateService(
+	schService = CreateServiceA(
 		schSCManager,					// SCM database 
 		SERVICE_NAME,					// name of service 
 		SERVICE_NAME,					// service name to display 
@@ -270,14 +230,14 @@ VOID DoInstallSrv()
 		NULL,							// no load ordering group 
 		NULL,							// no tag identifier 
 		NULL,							// no dependencies 
-		NULL,							// LocalSystem account 
+		NULL,	// LocalSystem account 
 		NULL							// no password 
 	);                     
-
+	//(LPCSTR)"NT AUTHORITY\\LocalService"
 	if (schService == NULL)
 	{
 		printf("CreateService failed (%d)\n", GetLastError());
-		ErrorExit(TEXT("GetProcessId"));
+		ErrorMessage(SERVICE_NAME);
 		CloseServiceHandle(schSCManager);
 		return;
 	}
@@ -302,7 +262,7 @@ VOID __stdcall DoDeleteSvc()
 	if (NULL == schSCManager)
 	{
 		printf("OpenSCManager failed (%d)\n", GetLastError());
-		ErrorExit(TEXT("GetProcessId"));
+		ErrorMessage(SERVICE_NAME);
 		return;
 	}
 
@@ -316,7 +276,7 @@ VOID __stdcall DoDeleteSvc()
 	if (schService == NULL)
 	{
 		printf("OpenService failed (%d)\n", GetLastError());
-		ErrorExit(TEXT("GetProcessId"));
+		ErrorMessage(SERVICE_NAME);
 		CloseServiceHandle(schSCManager);
 		return;
 	}
@@ -326,7 +286,7 @@ VOID __stdcall DoDeleteSvc()
 	if (!DeleteService(schService))
 	{
 		printf("DeleteService failed (%d)\n", GetLastError());
-		ErrorExit(TEXT("GetProcessId"));
+		ErrorMessage(SERVICE_NAME);
 	}
 	else printf("Service deleted successfully\n");
 
@@ -349,10 +309,10 @@ VOID __stdcall DoStartSvc()
 		NULL,                    // servicesActive database 
 		SC_MANAGER_ALL_ACCESS);  // full access rights 
 
-	if (NULL == schSCManager)
+	if (schSCManager == NULL)
 	{
 		printf("OpenSCManager failed (%d)\n", GetLastError());
-		ErrorExit(TEXT("GetProcessId"));
+		ErrorMessage(SERVICE_NAME);
 		return;
 	}
 
@@ -366,7 +326,7 @@ VOID __stdcall DoStartSvc()
 	if (schService == NULL)
 	{
 		printf("OpenService failed (%d)\n", GetLastError());
-		ErrorExit(TEXT("GetProcessId"));
+		ErrorMessage(TEXT("GetProcessId"));
 		CloseServiceHandle(schSCManager);
 		return;
 	}
@@ -380,7 +340,7 @@ VOID __stdcall DoStartSvc()
 		&dwBytesNeeded))              // size needed if buffer is too small
 	{
 		printf("QueryServiceStatusEx failed (%d)\n", GetLastError());
-		ErrorExit(TEXT("GetProcessId"));
+		ErrorMessage(SERVICE_NAME);
 		CloseServiceHandle(schService);
 		CloseServiceHandle(schSCManager);
 		return;
@@ -429,7 +389,7 @@ VOID __stdcall DoStartSvc()
 			&dwBytesNeeded))              // size needed if buffer is too small
 		{
 			printf("QueryServiceStatusEx failed (%d)\n", GetLastError());
-			ErrorExit(TEXT("GetProcessId"));
+			ErrorMessage(SERVICE_NAME);
 			CloseServiceHandle(schService);
 			CloseServiceHandle(schSCManager);
 			return;
@@ -462,7 +422,7 @@ VOID __stdcall DoStartSvc()
 		NULL))		// no arguments 
 	{
 		printf("StartService failed (%d)\n", GetLastError());
-		ErrorExit(TEXT("GetProcessId"));
+		ErrorMessage(SERVICE_NAME);
 		CloseServiceHandle(schService);
 		CloseServiceHandle(schSCManager);
 		DoStopSvc();
@@ -481,7 +441,7 @@ VOID __stdcall DoStartSvc()
 		&dwBytesNeeded))              // if buffer too small
 	{
 		printf("QueryServiceStatusEx failed (%d)\n", GetLastError());
-		ErrorExit(TEXT("GetProcessId"));
+		ErrorMessage(SERVICE_NAME);
 		CloseServiceHandle(schService);
 		CloseServiceHandle(schSCManager);
 		return;
@@ -517,7 +477,7 @@ VOID __stdcall DoStartSvc()
 			&dwBytesNeeded))              // if buffer too small
 		{
 			printf("QueryServiceStatusEx failed (%d)\n", GetLastError());
-			ErrorExit(TEXT("GetProcessId"));
+			ErrorMessage(SERVICE_NAME);
 			break;
 		}
 
@@ -578,7 +538,7 @@ VOID __stdcall DoStopSvc()
 	if (NULL == schSCManager)
 	{
 		printf("OpenSCManager failed (%d)\n", GetLastError());
-		ErrorExit(TEXT("GetProcessId"));
+		ErrorMessage(SERVICE_NAME);
 		return;
 	}
 
@@ -594,7 +554,7 @@ VOID __stdcall DoStopSvc()
 	if (schService == NULL)
 	{
 		printf("OpenService failed (%d)\n", GetLastError());
-		ErrorExit(TEXT("GetProcessId"));
+		ErrorMessage(SERVICE_NAME);
 		CloseServiceHandle(schSCManager);
 		return;
 	}
@@ -609,7 +569,7 @@ VOID __stdcall DoStopSvc()
 		&dwBytesNeeded))
 	{
 		printf("QueryServiceStatusEx failed (%d)\n", GetLastError());
-		ErrorExit(TEXT("GetProcessId"));
+		ErrorMessage(SERVICE_NAME);
 		goto stop_cleanup;
 	}
 
@@ -646,7 +606,7 @@ VOID __stdcall DoStopSvc()
 			&dwBytesNeeded))
 		{
 			printf("QueryServiceStatusEx failed (%d)\n", GetLastError());
-			ErrorExit(TEXT("GetProcessId"));
+			ErrorMessage(SERVICE_NAME);
 			goto stop_cleanup;
 		}
 
@@ -675,7 +635,7 @@ VOID __stdcall DoStopSvc()
 		(LPSERVICE_STATUS)&ssp))
 	{
 		printf("ControlService failed (%d)\n", GetLastError());
-		ErrorExit(TEXT("GetProcessId"));
+		ErrorMessage(SERVICE_NAME);
 		goto stop_cleanup;
 	}
 
@@ -692,7 +652,7 @@ VOID __stdcall DoStopSvc()
 			&dwBytesNeeded))
 		{
 			printf("QueryServiceStatusEx failed (%d)\n", GetLastError());
-			ErrorExit(TEXT("GetProcessId"));
+			ErrorMessage(SERVICE_NAME);
 			goto stop_cleanup;
 		}
 
@@ -821,7 +781,7 @@ VOID WINAPI ServiceMain(DWORD argc, LPTSTR* argv)
 
 	if (!g_StatusHandle || g_StatusHandle == NULL)
 	{
-		//SvcReportEvent(TEXT("RegisterServiceCtrlHandler"));
+		SvcReportEvent(TEXT("RegisterServiceCtrlHandler"));
 		return;
 	}
 
@@ -829,11 +789,12 @@ VOID WINAPI ServiceMain(DWORD argc, LPTSTR* argv)
 	ZeroMemory(&g_ServiceStatus, sizeof(g_ServiceStatus));
 	g_ServiceStatus.dwServiceType = SERVICE_WIN32_OWN_PROCESS;
 	g_ServiceStatus.dwServiceSpecificExitCode = 0;
-	g_ServiceStatus.dwControlsAccepted = 0;
-	g_ServiceStatus.dwCurrentState = SERVICE_START_PENDING;
-	g_ServiceStatus.dwWin32ExitCode = 0;
-	g_ServiceStatus.dwCheckPoint = 0;
-	//ReportSvcStatus(SERVICE_START_PENDING, NO_ERROR, 3000);
+	//g_ServiceStatus.dwControlsAccepted = 0;
+	//g_ServiceStatus.dwCurrentState = SERVICE_START_PENDING;
+	//g_ServiceStatus.dwWin32ExitCode = 0;
+	//g_ServiceStatus.dwCheckPoint = 0;
+
+	ReportSvcStatus(SERVICE_START_PENDING, NO_ERROR, 3000);
 
 	if (SetServiceStatus(g_StatusHandle, &g_ServiceStatus) == FALSE)
 		printf(_T("CNC_Current_Tracker_Service: ServiceMain: SetServiceStatus returned error"));
@@ -844,29 +805,30 @@ VOID WINAPI ServiceMain(DWORD argc, LPTSTR* argv)
 	g_ServiceStopEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
 	if (g_ServiceStopEvent == NULL)
 	{
-		//ReportSvcStatus(SERVICE_STOPPED, GetLastError(), 0);
-		ErrorExit(TEXT("GetProcessId"));
-		g_ServiceStatus.dwControlsAccepted = 0;
-		g_ServiceStatus.dwCurrentState = SERVICE_STOPPED;
-		g_ServiceStatus.dwWin32ExitCode = GetLastError();
-		g_ServiceStatus.dwCheckPoint = 1;
+		ReportSvcStatus(SERVICE_STOPPED, GetLastError(), 0);
+		ErrorMessage(SERVICE_NAME);
+		//g_ServiceStatus.dwControlsAccepted = 0;
+		//g_ServiceStatus.dwCurrentState = SERVICE_STOPPED;
+		//g_ServiceStatus.dwWin32ExitCode = GetLastError();
+		//g_ServiceStatus.dwCheckPoint = 1;
 		if (SetServiceStatus(g_StatusHandle, &g_ServiceStatus) == FALSE)
 			printf(_T(
 				"My Sample Service: ServiceMain: SetServiceStatus returned error"));
 		//printf(_T("CNC_Current_Tracker_Service: ServiceInit: Exit"));
 		return;
 	}
-	//ReportSvcStatus(SERVICE_START_PENDING, NO_ERROR, 3000);
+	ReportSvcStatus(SERVICE_RUNNING, NO_ERROR, 0);
 	printf("creating service worker thread");
-	g_ServiceStatus.dwControlsAccepted = SERVICE_ACCEPT_STOP;
-	g_ServiceStatus.dwCurrentState = SERVICE_RUNNING;
-	g_ServiceStatus.dwWin32ExitCode = 0;
-	g_ServiceStatus.dwCheckPoint = 0;
+	//g_ServiceStatus.dwControlsAccepted = SERVICE_ACCEPT_STOP;
+	//g_ServiceStatus.dwCurrentState = SERVICE_RUNNING;
+	//g_ServiceStatus.dwWin32ExitCode = 0;
+	//g_ServiceStatus.dwCheckPoint = 0;
 
 	if (SetServiceStatus(g_StatusHandle, &g_ServiceStatus) == FALSE) 
 		printf(_T("CNC_Current_Tracker_Service: ServiceMain: SetServiceStatus returned error"));
 
-	HANDLE hThread = CreateThread(NULL, 0, ServiceWorkerThread, NULL, 0, NULL);
+	//HANDLE hThread = CreateThread(NULL, 0, ServiceWorkerThread, &g_ServiceStopEvent, 0, NULL);
+	HANDLE hThread = CreateThread(NULL, 0, ServiceWorkerThread, &g_ServiceStopEvent, 0, NULL);
 
 	if (hThread) WaitForSingleObject(g_ServiceStopEvent, INFINITE);
 	
@@ -876,11 +838,12 @@ VOID WINAPI ServiceMain(DWORD argc, LPTSTR* argv)
 	}*/
 	
 	CloseHandle(g_ServiceStopEvent);
+	ReportSvcStatus(SERVICE_STOPPED, NO_ERROR, 0);
 
-	g_ServiceStatus.dwControlsAccepted = 0;
-	g_ServiceStatus.dwCurrentState = SERVICE_STOPPED;
-	g_ServiceStatus.dwWin32ExitCode = 0;
-	g_ServiceStatus.dwCheckPoint = 3;
+	//g_ServiceStatus.dwControlsAccepted = 0;
+	//g_ServiceStatus.dwCurrentState = SERVICE_STOPPED;
+	//g_ServiceStatus.dwWin32ExitCode = 0;
+	//g_ServiceStatus.dwCheckPoint = 3;
 
 	if (SetServiceStatus(g_StatusHandle, &g_ServiceStatus) == FALSE) printf(_T("CNC_Current_Tracker_Service: ServiceMain: SetServiceStatus returned error"));
 
@@ -897,15 +860,16 @@ VOID WINAPI ServiceCtrlHandler(DWORD CtrlCode)
 		//ReportSvcStatus(SERVICE_STOP_PENDING, NO_ERROR, 0);
 		if (g_ServiceStatus.dwCurrentState != SERVICE_RUNNING) break;
 
-		g_ServiceStatus.dwControlsAccepted = 0;
-		g_ServiceStatus.dwCurrentState = SERVICE_STOP_PENDING;
-		g_ServiceStatus.dwWin32ExitCode = 0;
-		g_ServiceStatus.dwCheckPoint = 4;
+		//g_ServiceStatus.dwControlsAccepted = 0;
+		//g_ServiceStatus.dwCurrentState = SERVICE_STOP_PENDING;
+		//g_ServiceStatus.dwWin32ExitCode = 0;
+		//g_ServiceStatus.dwCheckPoint = 4;
+		ReportSvcStatus(SERVICE_STOP_PENDING, NO_ERROR, 0);
 
 		if (SetServiceStatus(g_StatusHandle, &g_ServiceStatus) == FALSE) 
 			printf(_T("CNC_Current_Tracker_Service: ServiceCtrlHandler: SetServiceStatus returned error"));
 		SetEvent(g_ServiceStopEvent);
-		//ReportSvcStatus(g_ServiceStatus.dwCurrentState, NO_ERROR, 0);
+		ReportSvcStatus(g_ServiceStatus.dwCurrentState, NO_ERROR, 0);
 		break;
 	}
 	default:
@@ -920,62 +884,33 @@ DWORD WINAPI ServiceWorkerThread(LPVOID lpParam)
 	//ReportSvcStatus(SERVICE_RUNNING, NO_ERROR, 0);
 	while (WaitForSingleObject(g_ServiceStopEvent, 0) != WAIT_OBJECT_0)
 	{
-		cnc_current_recorder();
+		cnc_current_recorder(&lpParam);
 	}
 
 	return ERROR_SUCCESS;
 }
 
-//VOID ReportSvcStatus(DWORD dwCurrentState,
-//	DWORD dwWin32ExitCode,
-//	DWORD dwWaitHint)
-//{
-//	static DWORD dwCheckPoint = 1;
-//
-//	// Fill in the SERVICE_STATUS structure.
-//
-//	g_ServiceStatus.dwCurrentState = dwCurrentState;
-//	g_ServiceStatus.dwWin32ExitCode = dwWin32ExitCode;
-//	g_ServiceStatus.dwWaitHint = dwWaitHint;
-//
-//	if (dwCurrentState == SERVICE_START_PENDING)
-//		g_ServiceStatus.dwControlsAccepted = 0;
-//	else g_ServiceStatus.dwControlsAccepted = SERVICE_ACCEPT_STOP;
-//
-//	if ((dwCurrentState == SERVICE_RUNNING) ||
-//		(dwCurrentState == SERVICE_STOPPED))
-//		g_ServiceStatus.dwCheckPoint = 0;
-//	else g_ServiceStatus.dwCheckPoint = dwCheckPoint++;
-//
-//	// Report the status of the service to the SCM.
-//	SetServiceStatus(g_StatusHandle, &g_ServiceStatus);
-//}
-//
-//VOID SvcReportEvent(const char *szFunction)
-//{
-//	HANDLE hEventSource;
-//	LPCTSTR lpszStrings[2];
-//	TCHAR Buffer[80];
-//
-//	hEventSource = RegisterEventSource(NULL, SERVICE_NAME);
-//
-//	if (NULL != hEventSource)
-//	{
-//		StringCchPrintf(Buffer, 80, TEXT("%s failed with %d"), szFunction, GetLastError());
-//
-//		lpszStrings[0] = SERVICE_NAME;
-//		lpszStrings[1] = Buffer;
-//
-//		ReportEvent(hEventSource,        // event log handle
-//			EVENTLOG_ERROR_TYPE, // event type
-//			0,                   // event category
-//			SVC_ERROR,           // event identifier
-//			NULL,                // no security identifier
-//			2,                   // size of lpszStrings array
-//			0,                   // no binary data
-//			lpszStrings,         // array of strings
-//			NULL);               // no binary data
-//
-//		DeregisterEventSource(hEventSource);
-//	}
-//}
+VOID ReportSvcStatus(DWORD dwCurrentState,
+	DWORD dwWin32ExitCode,
+	DWORD dwWaitHint)
+{
+	static DWORD dwCheckPoint = 1;
+
+	// Fill in the SERVICE_STATUS structure.
+
+	g_ServiceStatus.dwCurrentState = dwCurrentState;
+	g_ServiceStatus.dwWin32ExitCode = dwWin32ExitCode;
+	g_ServiceStatus.dwWaitHint = dwWaitHint;
+
+	if (dwCurrentState == SERVICE_START_PENDING)
+		g_ServiceStatus.dwControlsAccepted = 0;
+	else g_ServiceStatus.dwControlsAccepted = SERVICE_ACCEPT_STOP;
+
+	if ((dwCurrentState == SERVICE_RUNNING) ||
+		(dwCurrentState == SERVICE_STOPPED))
+		g_ServiceStatus.dwCheckPoint = 0;
+	else g_ServiceStatus.dwCheckPoint = dwCheckPoint++;
+
+	// Report the status of the service to the SCM.
+	SetServiceStatus(g_StatusHandle, &g_ServiceStatus);
+}

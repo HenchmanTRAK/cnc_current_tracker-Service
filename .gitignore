@@ -4,5 +4,4 @@ cmake
 *.ini
 sample.rc
 sample.res
-Sample.mc
 *.bin

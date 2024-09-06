@@ -5,7 +5,8 @@
 
 #include "cnc_current_recorder.h"
 #include "sql_connection.h"
-//#include "sample.h"
+#include "event_reporter.h"
+#include "sample.h"
 #include <iostream>
 #include <Windows.h>
 #include <tchar.h>
@@ -34,6 +35,9 @@ HANDLE				  g_ServiceStopEvent	= INVALID_HANDLE_VALUE;
 SC_HANDLE schSCManager;
 SC_HANDLE schService;
 
+
+LPCTSTR ErrorMessage(LPCTSTR lpszFunction = "");
+int ShellExecuteApp(std::string appName, std::string params);
 VOID WINAPI ServiceMain(DWORD argc, LPTSTR* argv);
 VOID ServiceInit(DWORD argc, LPTSTR* argv);
 VOID WINAPI ServiceCtrlHandler(DWORD);
@@ -43,10 +47,5 @@ VOID WINAPI __stdcall DoDeleteSvc();
 VOID WINAPI __stdcall DoStartSvc();
 VOID WINAPI __stdcall DoStopSvc();
 BOOL WINAPI __stdcall StopDependentServices();
-HKEY OpenKey(HKEY , std::string);
-void SetStrVal(HKEY hKey, LPCTSTR lpValue, std::string data, DWORD type);
-void SetVal(HKEY , LPCTSTR, DWORD, DWORD);
-std::string GetStrVal(HKEY , LPCTSTR , DWORD );
-DWORD GetVal(HKEY , LPCTSTR, DWORD);
-//VOID ReportSvcStatus(DWORD, DWORD, DWORD);
+VOID ReportSvcStatus(DWORD, DWORD, DWORD);
 //VOID SvcReportEvent(const char*);

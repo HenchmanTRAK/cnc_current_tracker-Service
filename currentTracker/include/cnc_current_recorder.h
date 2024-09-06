@@ -17,7 +17,9 @@
 #include <fstream>
 #include <thread>
 #include <chrono>
+#include <filesystem>
 
+#include "event_reporter.h"
 #include "sql_connection.h"
 
 #pragma comment(lib, "Ws2_32.lib")
@@ -42,6 +44,9 @@ struct CNCVoltageMeter{
     double channel2Reading;
 };
 
-int cnc_current_recorder();
+static std::string app_path;
+static std::stringstream logx;
+
+int cnc_current_recorder(HANDLE*);
 
 #endif

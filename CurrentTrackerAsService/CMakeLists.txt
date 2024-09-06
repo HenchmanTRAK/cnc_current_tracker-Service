@@ -5,8 +5,8 @@
 # Add source to this project's executable.
 add_executable (CNC_Current_Tracker "CurrentTrackerAsService.cpp" )
 
-target_include_directories(CNC_Current_Tracker PRIVATE "include")
-target_link_libraries(CNC_Current_Tracker PRIVATE Current_Recorder SQL_CONNECTION SimpleIni)
+target_include_directories(CNC_Current_Tracker PRIVATE "include" ${CMAKE_SOURCE_DIR})
+target_link_libraries(CNC_Current_Tracker PRIVATE EventReporter Current_Recorder SQL_CONNECTION SimpleIni )
 
 set_target_properties(CNC_Current_Tracker PROPERTIES LINK_FLAGS
 	"/MANIFESTUAC:\"level='requireAdministrator'\"" )
