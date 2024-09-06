@@ -69,10 +69,12 @@ void DatabaseManager::connectToSQLServer() {
     )) {
     case SQL_SUCCESS:
         std::cout << success_message << "\n";
+        SvcReportEvent("SQL_Connection", success_message, 0);
         //ReportEvent(event_log, EVENTLOG_SUCCESS, 0, 0, NULL, 1, 0, &success_message, NULL);
         break;
     case SQL_SUCCESS_WITH_INFO:
         std::cout << success_message_with_info << "\n";
+        SvcReportEvent("SQL_Connection", success_message_with_info, 0);
         //ReportEvent(event_log, EVENTLOG_SUCCESS, 0, 0, NULL, 1, 0, &success_message_with_info, NULL);
         break;
     case SQL_INVALID_HANDLE:
@@ -83,7 +85,7 @@ void DatabaseManager::connectToSQLServer() {
     case SQL_ERROR:
         SQLGetDiagRec(SQL_HANDLE_DBC, sqlConnHandle, 1, sql_state, &native_error, message, sizeof(message), &msg_len);
         std::cout << "Could not connect to SQL Server" << " Error code: " << sql_state << " Message: " << message << "\n";
-        SvcReportEvent("SQL_Connection", "Could not connect to SQL Server Error Message: " + *message);
+        SvcReportEvent("SQL_Connection", "Could not connect to SQL Server Error Message: " + std::string((const char *)message));
         //ReportEvent(event_log, EVENTLOG_ERROR_TYPE, 0, 0, NULL, 1, 0, message, NULL);
         CleanupHandlers();
     default:

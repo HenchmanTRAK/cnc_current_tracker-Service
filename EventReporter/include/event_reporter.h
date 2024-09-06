@@ -12,8 +12,9 @@
 
 
 LPCTSTR ErrorMessage(LPCTSTR lpszFunction);
-LPCTSTR LogMessage(LPCTSTR lpszFunction, std::string Msg);
-VOID SvcReportEvent(LPCTSTR szFunction, std::string msg = "");
+LPCTSTR InformationMessage(LPCTSTR lpszFunction, std::string Msg);
+LPCTSTR SuccessMessage(LPCTSTR lpszFunction, std::string Msg);
+VOID SvcReportEvent(LPCTSTR szFunction, std::string msg = "", int eventType = 3);
 HKEY OpenKey(HKEY, std::string);
 void SetStrVal(HKEY hKey, LPCTSTR lpValue, std::string data, DWORD type);
 void SetVal(HKEY, LPCTSTR, DWORD, DWORD);

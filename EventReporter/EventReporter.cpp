@@ -12,7 +12,7 @@ LPCTSTR ErrorMessage(LPCTSTR lpszFunction)
 	LPVOID lpDisplayBuf;
 	DWORD dw = GetLastError();
 
-	FormatMessage(
+	FormatMessageA(
 		FORMAT_MESSAGE_ALLOCATE_BUFFER |
 		FORMAT_MESSAGE_FROM_SYSTEM |
 		FORMAT_MESSAGE_IGNORE_INSERTS,
@@ -24,8 +24,8 @@ LPCTSTR ErrorMessage(LPCTSTR lpszFunction)
 
 	// Display the error message and exit the process
 	lpDisplayBuf = (LPVOID)LocalAlloc(LMEM_ZEROINIT,
-		(lstrlen((LPCTSTR)lpMsgBuf) + lstrlen((LPCTSTR)lpszFunction) + 40) * sizeof(TCHAR));
-	StringCchPrintf((LPTSTR)lpDisplayBuf,
+		(lstrlen((LPCTSTR)lpMsgBuf)+ lstrlen((LPCTSTR)lpszFunction) + 40) * sizeof(TCHAR));
+	StringCchPrintfA((LPTSTR)lpDisplayBuf,
 		LocalSize(lpDisplayBuf) / sizeof(TCHAR),
 		TEXT("%s failed with error %d: %s"),
 		lpszFunction, dw, lpMsgBuf);
@@ -37,7 +37,7 @@ LPCTSTR ErrorMessage(LPCTSTR lpszFunction)
 	return (LPCTSTR)lpDisplayBuf;
 }
 
-LPCTSTR LogMessage(LPCTSTR lpszFunction, std::string Msg)
+LPCTSTR InformationMessage(LPCTSTR lpszFunction, std::string Msg)
 {
 	// Retrieve the system error message for the last-error code
 
@@ -45,7 +45,7 @@ LPCTSTR LogMessage(LPCTSTR lpszFunction, std::string Msg)
 	LPVOID lpDisplayBuf;
 	//DWORD dw = GetLastError();
 
-	FormatMessage(
+	FormatMessageA(
 		FORMAT_MESSAGE_ALLOCATE_BUFFER |
 		FORMAT_MESSAGE_FROM_STRING |
 		FORMAT_MESSAGE_IGNORE_INSERTS,
@@ -58,8 +58,8 @@ LPCTSTR LogMessage(LPCTSTR lpszFunction, std::string Msg)
 
 	// Display the error message and exit the process
 	lpDisplayBuf = (LPVOID)LocalAlloc(LMEM_ZEROINIT,
-		(lstrlen((LPCTSTR)Msg.c_str()) + lstrlen((LPCTSTR)lpszFunction) + 40) * sizeof(TCHAR));
-	StringCchPrintf((LPTSTR)lpDisplayBuf,
+		((lstrlen((LPCTSTR)Msg.c_str())-1) + lstrlen((LPCTSTR)lpszFunction) + 40) * sizeof(TCHAR));
+	StringCchPrintfA((LPTSTR)lpDisplayBuf,
 		LocalSize(lpDisplayBuf) / sizeof(TCHAR),
 		TEXT("%s triggered log event logging: %s"),
 		lpszFunction, lpMsgBuf);
@@ -71,33 +71,90 @@ LPCTSTR LogMessage(LPCTSTR lpszFunction, std::string Msg)
 	return (LPCTSTR)lpDisplayBuf;
 }
 
-VOID SvcReportEvent(LPCTSTR szFunction, std::string msg)
+LPCTSTR SuccessMessage(LPCTSTR lpszFunction, std::string Msg)
+{
+	// Retrieve the system error message for the last-error code
+
+	LPVOID lpMsgBuf;
+	LPVOID lpDisplayBuf;
+	//DWORD dw = GetLastError();
+
+	FormatMessageA(
+		FORMAT_MESSAGE_ALLOCATE_BUFFER |
+		FORMAT_MESSAGE_FROM_STRING |
+		FORMAT_MESSAGE_IGNORE_INSERTS,
+		Msg.c_str(),
+		0,
+		MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+		(LPTSTR)&lpMsgBuf,
+		0,
+		NULL);
+
+	// Display the error message and exit the process
+	lpDisplayBuf = (LPVOID)LocalAlloc(LMEM_ZEROINIT,
+		((lstrlen((LPCTSTR)Msg.c_str())-1) + lstrlen((LPCTSTR)lpszFunction) + 40) * sizeof(TCHAR));
+	StringCchPrintfA((LPTSTR)lpDisplayBuf,
+		(LocalSize(lpDisplayBuf) / sizeof(TCHAR)),
+		TEXT("Success; %s succeeded in: %s"),
+		lpszFunction, lpMsgBuf);
+	//MessageBox(NULL, (LPCTSTR)lpDisplayBuf, TEXT("Error"), MB_OK);
+	//LocalFree(lpMsgBuf);
+	std::cout << (char*)lpDisplayBuf << std::endl;
+	//LocalFree(lpDisplayBuf);
+	//ExitProcess(dw);
+	return (LPCTSTR)lpDisplayBuf;
+}
+
+VOID SvcReportEvent(LPCTSTR szFunction, std::string msg, int eventType)
 {
 	HANDLE hEventSource;
 	LPCTSTR lpszStrings[2];
+	DWORD errorCode = GetLastError();
+	WORD EventType = EVENTLOG_SUCCESS;
+	DWORD EventId = SVC_SUCCESS;
+	//bool isError = errorCode != NO_ERROR;
 	//TCHAR Buffer[80];
 	HKEY hKey = OpenKey(HKEY_LOCAL_MACHINE, std::string("SOFTWARE\\CNC_Current_Tracker"));
 	std::string SERVICE_NAME = GetStrVal(hKey, "ServiceName", REG_SZ);
 
-	hEventSource = RegisterEventSource(NULL, SERVICE_NAME.c_str());
+	hEventSource = RegisterEventSourceA(NULL, SERVICE_NAME.c_str());
 
 	if (NULL != hEventSource)
 	{
 		//StringCchPrintf(Buffer, 80, TEXT("%s failed with %d"), szFunction, GetLastError());
 
 		lpszStrings[0] = SERVICE_NAME.c_str();
-		lpszStrings[1] = msg == "" ? ErrorMessage(szFunction) : LogMessage(szFunction, msg);
+		if (errorCode == 0 || eventType == 0) {
+			lpszStrings[1] = SuccessMessage(szFunction, msg);
+		}
+		else if (errorCode > 0 && msg == "")
+		{
+			lpszStrings[1] = ErrorMessage(szFunction);
+			EventType = EVENTLOG_ERROR_TYPE;
+			EventId = SVC_ERROR;
+		}
+		else if (eventType == 2) {
+			lpszStrings[1] = ErrorMessage(szFunction);
+			EventType = EVENTLOG_WARNING_TYPE;
+			EventId = SVC_WARNING;
+		}
+		else {
+			lpszStrings[1] = InformationMessage(szFunction, msg);
+			EventType = EVENTLOG_INFORMATION_TYPE;
+			EventId = SVC_INFORMATION;
+		}
 
-		ReportEvent(
-			hEventSource,        // event log handle
-			msg == "" ? EVENTLOG_ERROR_TYPE : EVENTLOG_INFORMATION_TYPE, // event type
-			0,                   // event category
-			msg == "" ? SVC_ERROR : SVC_INFORMATION,           // event identifier
-			NULL,                // no security identifier
-			2,                   // size of lpszStrings array
-			0,                   // no binary data
-			lpszStrings,         // array of strings
-			NULL);               // no binary data
+		ReportEventA(
+			hEventSource,	// event log handle
+			EventType,		// event type
+			0,				// event category
+			EventId,		// event identifier
+			NULL,			// no security identifier
+			2,				// size of lpszStrings array
+			0,				// no binary data
+			lpszStrings,	// array of strings
+			NULL			// no binary data
+		);
 
 		DeregisterEventSource(hEventSource);
 	}

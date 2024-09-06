@@ -44,22 +44,40 @@
 
 
 //
-// MessageId: SVC_ERROR
+// MessageId: SVC_SUCCESS
 //
 // MessageText:
 //
-// An error has occurred (%2).
+// %2
 //
-#define SVC_ERROR                        ((DWORD)0xC0020001L)
+#define SVC_SUCCESS                      ((DWORD)0x00020000L)
 
 //
 // MessageId: SVC_INFORMATION
 //
 // MessageText:
 //
-// For Your Information (%2).
+// For Your Information; %2
 //
-#define SVC_INFORMATION                  ((DWORD)0x40020000L)
+#define SVC_INFORMATION                  ((DWORD)0x40020001L)
+
+//
+// MessageId: SVC_WARNING
+//
+// MessageText:
+//
+// %2
+//
+#define SVC_WARNING                      ((DWORD)0x80020002L)
+
+//
+// MessageId: SVC_ERROR
+//
+// MessageText:
+//
+// An error has occurred: %2
+//
+#define SVC_ERROR                        ((DWORD)0xC0020003L)
 
  // A message file must end with a period on its own line
  // followed by a blank line.

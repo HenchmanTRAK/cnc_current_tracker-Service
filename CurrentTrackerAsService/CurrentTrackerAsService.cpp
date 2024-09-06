@@ -769,15 +769,15 @@ BOOL __stdcall StopDependentServices()
 
 VOID WINAPI ServiceMain(DWORD argc, LPTSTR* argv)
 {	
-	DWORD Status = E_FAIL;
 
 
 	// Registering Service Controller
-	printf("Registering Service Controler");
 	g_StatusHandle = RegisterServiceCtrlHandler(
 		SERVICE_NAME,
 		ServiceCtrlHandler
 	);
+	printf("Registering Service Controler");
+	DWORD Status = E_FAIL;
 
 	if (!g_StatusHandle || g_StatusHandle == NULL)
 	{

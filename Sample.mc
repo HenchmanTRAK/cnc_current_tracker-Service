@@ -17,20 +17,36 @@ LanguageNames=(English=0x409:MSG00409)
 
 ; // The following are message definitions.
 
-MessageId=0x1
-Severity=Error
+MessageId=0x0
+Severity=Success
 Facility=Runtime
-SymbolicName=SVC_ERROR
+SymbolicName=SVC_SUCCESS
 Language=English
-An error has occurred (%2).
+%2
 .
 
-MessageId=0x0
+MessageId=0x1
 Severity=Informational
 Facility=Runtime
 SymbolicName=SVC_INFORMATION
 Language=English
-For Your Information (%2).
+For Your Information; %2
+.
+
+MessageId=0x2
+Severity=Warning
+Facility=Runtime
+SymbolicName=SVC_WARNING
+Language=English
+%2
+.
+
+MessageId=0x3
+Severity=Error
+Facility=Runtime
+SymbolicName=SVC_ERROR
+Language=English
+An error has occurred: %2
 .
 
 ; // A message file must end with a period on its own line

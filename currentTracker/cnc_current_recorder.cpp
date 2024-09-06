@@ -57,7 +57,7 @@ int cnc_current_recorder(HANDLE *g_ServiceStopEvent)
     // Declare and initialize variables.
     HKEY hKey = OpenKey(HKEY_LOCAL_MACHINE, "SOFTWARE\\CNC_Current_Tracker");
     std::string installPath = GetStrVal(hKey, "InstallPath", REG_SZ);
-    app_path = installPath;
+    app_path = installPath+"\\";
     logx << "Retrieved App Path from Registry: " << app_path.data() << std::endl;
     SvcReportEvent("cnc_current_recorder", "Retrieved App Path from Registry: "+ app_path);
     CNCVoltageMeter reading;
@@ -136,10 +136,10 @@ int cnc_current_recorder(HANDLE *g_ServiceStopEvent)
             // closesocket(ConnectSocket);
             printf("Unable to connect to server: %ld\n", WSAGetLastError());
             SvcReportEvent("cnc_current_recorder");
-            printf("Retrying connection in 5 seconds");
+            //printf("Retrying connection in 5 seconds");
             logx << "Failed to connect socket" << std::endl;
             WriteToLog();
-            this_thread::sleep_for(chrono::seconds(5));
+            this_thread::sleep_for(chrono::minutes(1));
             //WSACleanup();
             //return 1;
         }
