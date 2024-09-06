@@ -13,6 +13,7 @@
 #include <strsafe.h>
 #include <cstdlib>
 #include <algorithm>
+#include <random>
 #include <TlHelp32.h>
 
 #include "SimpleIni.h"

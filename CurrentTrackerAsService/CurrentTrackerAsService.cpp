@@ -3,6 +3,17 @@
 
 #include "CurrentTrackerAsService.h"
 
+#define PBSTR "||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||"
+#define PBWIDTH 60
+
+void printProgress(double percentage) {
+	int val = (int)(percentage * 100);
+	int lpad = (int)(percentage * PBWIDTH);
+	int rpad = PBWIDTH - lpad;
+	printf("\r%3d%% [%.*s%*s]", val, lpad, PBSTR, rpad, "");
+	fflush(stdout);
+}
+
 int ShellExecuteApp(std::string appName, std::string params)
 {
 	SHELLEXECUTEINFO SEInfo;
@@ -20,8 +31,22 @@ int ShellExecuteApp(std::string appName, std::string params)
 	//
 	//printf(oldWindowTitle);
 	//printf("\n");
-	Sleep(5000);
-
+	printf("Preparing to Start Service. Service will start soon...\n");
+	//Sleep(5000);
+	double progressMade = 0;
+	bool shouldContinue = false;
+	while (!shouldContinue) {
+		double progress = (rand() % 10)/100.00;
+		progressMade += progress;
+		if (progressMade > 1.00) {
+			double over = 1.00 - progressMade;
+			progressMade += over;
+			shouldContinue = true;
+		}
+		printProgress(progressMade);
+		Sleep(1000);
+	}
+	//Sleep(1000);
 	//std::fill_n(SEInfo, sizeof(SEInfo), NULL);
 	SEInfo.cbSize = sizeof(SHELLEXECUTEINFO);
 	SEInfo.fMask = SEE_MASK_NOCLOSEPROCESS;
@@ -30,7 +55,8 @@ int ShellExecuteApp(std::string appName, std::string params)
 	SEInfo.lpDirectory = NULL;
 	SEInfo.lpFile = exeFile.c_str();
 	SEInfo.lpParameters = paramStr.c_str();
-	SEInfo.nShow = paramStr == "" ? SW_NORMAL : SW_HIDE;
+	//SEInfo.nShow = paramStr == "" ? SW_NORMAL : SW_HIDE;
+	SEInfo.nShow = SW_HIDE;
 	if (ShellExecuteEx(&SEInfo)) {
 		do {
 			GetExitCodeProcess(SEInfo.hProcess, &ExitCode);
@@ -145,17 +171,20 @@ int __cdecl _tmain(int argc, TCHAR *argv[])
 		DoDeleteSvc();
 
 		LONG nError = RegDeleteKey(HKEY_LOCAL_MACHINE, std::string("SYSTEM\\CurrentControlSet\\Services\\EventLog\\Application\\").append(SERVICE_NAME).data());
+		return 0;
 	}
 
 	if (lstrcmpi(argv[1], TEXT("start")) == 0)
 	{
 		//DoStopSvc();
 		DoStartSvc();
+		return 0;
 	}
 
 	if (lstrcmpi(argv[1], TEXT("stop")) == 0)
 	{
 		DoStopSvc();
+		return 0;
 	}
 
 	/*if (lstrcmpi(argv[1], TEXT("install")) == 0 || lstrcmpi(argv[1], TEXT("install")) == -1)
