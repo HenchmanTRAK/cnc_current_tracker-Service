@@ -6,7 +6,7 @@
 #include "cnc_current_recorder.h"
 #include "sql_connection.h"
 #include "event_reporter.h"
-#include "sample.h"
+#include "EventLog.h"
 #include <iostream>
 #include <Windows.h>
 #include <tchar.h>

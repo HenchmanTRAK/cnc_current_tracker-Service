@@ -4,4 +4,6 @@ cmake
 *.ini
 sample.rc
 sample.res
+EventLog.rc
+EventLog.res
 *.bin

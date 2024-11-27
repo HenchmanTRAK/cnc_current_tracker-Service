@@ -3,7 +3,7 @@
 #pragma once
 
 
-#include "sample.h"
+#include "EventLog.h"
 #include <stdlib.h>
 #include <iostream>
 #include <string>

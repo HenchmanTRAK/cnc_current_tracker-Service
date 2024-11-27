@@ -94,7 +94,7 @@ int __cdecl _tmain(int argc, TCHAR *argv[])
 		byteLength = GetCurrentDirectory(sizeof(buff), buff);
 		currDir = buff;
 		currDir.resize(byteLength);
-		currDir.append("\\sample.dll");
+		currDir.append("\\EventLog.dll");
 		struct stat buffer;
 		
 		if (evtMsgFile == "" || stat(currDir.c_str(), &buffer) == 0) {

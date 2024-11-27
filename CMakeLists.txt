@@ -25,11 +25,6 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(SimpleIni)
 
-set(SAMPLE_RES_DIR ${CMAKE_SOURCE_DIR}/sample.res)
-set(SAMPLE_RC_DIR ${CMAKE_SOURCE_DIR}/sample.rc)
-set(SAMPLE_HEADER_DIR ${CMAKE_SOURCE_DIR}/sample.h)
-message(WARNING "sample: ${SAMPLE_RES_DIR}")
-
 # Include sub-projects.
 add_subdirectory ("EventReporter")
 add_subdirectory ("sqlConnection")
@@ -37,6 +32,6 @@ add_subdirectory ("currentTracker")
 add_subdirectory ("CurrentTrackerAsService")
 
 configure_file(${CMAKE_SOURCE_DIR}/settings.ini "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}\\settings.ini" COPYONLY)
-configure_file(${CMAKE_SOURCE_DIR}/sample.dll "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}\\sample.dll" COPYONLY)
+configure_file(${CMAKE_SOURCE_DIR}/EventLog.dll "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}\\EventLog.dll" COPYONLY)
 #install(TARGETS CNC_Current_Tracker RUNTIME_DEPENDENCIES PRE_EXCLUDE_REGEXES "api-ms-" "ext-ms-" POST_EXCLUDE_REGEXES ".*system32/.*\\.dll")
 #install (FILES ".\\settings.ini" DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
